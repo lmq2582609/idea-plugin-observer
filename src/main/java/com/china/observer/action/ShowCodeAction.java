@@ -168,21 +168,6 @@ public class ShowCodeAction extends AnAction {
      * @param editor
      */
     private void showCode(PsiMethod method, Editor editor) {
-//        JBTextArea textArea = new JBTextArea(method.getText());
-//        textArea.setLineWrap(true);
-//        textArea.setWrapStyleWord(true);
-//        JBScrollPane scrollPane = new JBScrollPane(textArea);
-//        scrollPane.setPreferredSize(new Dimension(500, 400));
-//        scrollPane.setMinimumSize(new Dimension(200, 200));
-//        Point point = editor.getContentComponent().getLocationOnScreen();
-//        Point point1 = editor.visualPositionToXY(editor.getCaretModel().getVisualPosition());
-//        point.translate(point1.x, point1.y);
-//        RelativePoint relativePoint = new RelativePoint(point);
-//        JBPopupFactory.getInstance().createComponentPopupBuilder(scrollPane, textArea)
-//                .setRequestFocus(true)
-//                .createPopup().show(relativePoint);
-
-
         VirtualFile virtualFile = method.getContainingFile().getVirtualFile();
         PsiFile psiFile = PsiManager.getInstance(project).findFile(virtualFile);
         FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("java");

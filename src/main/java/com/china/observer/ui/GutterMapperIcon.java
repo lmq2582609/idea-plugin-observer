@@ -83,17 +83,16 @@ public class GutterMapperIcon extends RelatedItemLineMarkerProvider {
         //给接口添加按钮
         if (interfaceTarget != null && ((PsiClass) element).getNameIdentifier() != null) {
             NavigationGutterIconBuilder<PsiElement> builder =
-                    NavigationGutterIconBuilder.create(AllIcons.Nodes.Interface)
+                    NavigationGutterIconBuilder.create(AllIcons.Gutter.ImplementedMethod)
                             .setTarget(interfaceTarget)
                             .setAlignment(GutterIconRenderer.Alignment.RIGHT)
                             .setTooltipText("Go To " + interfaceTarget.getName());
             result.add(builder.createLineMarkerInfo(((PsiClass) element).getNameIdentifier()));
         }
-        //给方法和xml添加按钮
+        //给方法添加按钮
         if (psiMethodXmlMap.size() > 0) {
             NavigationGutterIconBuilder<PsiElement> builder =
-                    NavigationGutterIconBuilder.create(AllIcons.Nodes.Interface)
-                            .setTooltipText("Go To XML")
+                    NavigationGutterIconBuilder.create(AllIcons.Gutter.ImplementedMethod)
                             .setAlignment(GutterIconRenderer.Alignment.RIGHT);
             for (Map.Entry<PsiMethod, XmlTag> entry : psiMethodXmlMap.entrySet()) {
                 if (entry.getKey().getNameIdentifier() != null) {

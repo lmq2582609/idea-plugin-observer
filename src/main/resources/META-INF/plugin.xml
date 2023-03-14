@@ -28,6 +28,7 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <codeInsight.lineMarkerProvider language="JAVA" implementationClass="com.china.observer.ui.GutterMapperIcon"/>
+        <codeInsight.lineMarkerProvider language="XML" implementationClass="com.china.observer.ui.GutterMapperXmlIcon"/>
     </extensions>
     <actions>
         <action id="ShowCodeAction" class="com.china.observer.action.ShowCodeAction"
