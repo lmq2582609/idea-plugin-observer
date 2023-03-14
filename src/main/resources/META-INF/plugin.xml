@@ -27,10 +27,11 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-
+        <codeInsight.lineMarkerProvider language="JAVA" implementationClass="com.china.observer.ui.GutterMapperIcon"/>
     </extensions>
     <actions>
-        <action id="ShowCodeAction" class="com.china.observer.action.ShowCodeAction" text="Show Implement" description="Show Implement">
+        <action id="ShowCodeAction" class="com.china.observer.action.ShowCodeAction"
+                text="Show Implement" description="Show Implement">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
         </action>
     </actions>
