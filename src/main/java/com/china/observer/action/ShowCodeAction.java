@@ -1,34 +1,71 @@
 package com.china.observer.action;
 
 import com.china.observer.util.AssertUtil;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
-import com.intellij.openapi.actionSystem.DataContext;
+import com.intellij.ide.highlighter.JavaFileType;
+import com.intellij.ide.util.PsiNavigationSupport;
+import com.intellij.lang.java.JavaLanguage;
+import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.editor.*;
+import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.EditorFontType;
+import com.intellij.openapi.editor.event.EditorMouseAdapter;
+import com.intellij.openapi.editor.event.EditorMouseEvent;
+import com.intellij.openapi.editor.event.EditorMouseListener;
+import com.intellij.openapi.editor.ex.EditorEx;
+import com.intellij.openapi.editor.ex.EditorSettingsExternalizable;
+import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory;
+import com.intellij.openapi.editor.impl.DocumentImpl;
+import com.intellij.openapi.editor.impl.EditorImpl;
+import com.intellij.openapi.editor.impl.EditorMarkupModelImpl;
+import com.intellij.openapi.editor.markup.HighlighterLayer;
+import com.intellij.openapi.editor.markup.HighlighterTargetArea;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.FileTypeManager;
+import com.intellij.openapi.fileTypes.PlainTextLanguage;
+import com.intellij.openapi.fileTypes.StdFileTypes;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.ui.popup.JBPopup;
-import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.ui.popup.*;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Iconable;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.source.PsiJavaFileImpl;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.OverridingMethodsSearch;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.util.PsiUtilBase;
+import com.intellij.testFramework.LightVirtualFile;
+import com.intellij.ui.EditorTextField;
+import com.intellij.ui.JBColor;
+import com.intellij.ui.ScrollPaneFactory;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.popup.BalloonPopupBuilderImpl;
+import org.cef.CefApp;
+import org.cef.CefClient;
+import org.cef.CefSettings;
+import org.cef.browser.CefBrowser;
+import org.cef.handler.CefAppHandlerAdapter;
+import org.cef.handler.CefLoadHandlerAdapter;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
+import javax.swing.text.DefaultEditorKit;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 
 public class ShowCodeAction extends AnAction {
 
@@ -162,32 +199,45 @@ public class ShowCodeAction extends AnAction {
 
     private DataContext dataContext;
     private Project project;
+    public static final DataKey<Editor> MY_EDITOR = DataKey.create("my.plugin.editor");
     /**
      * 展示代码
      * @param method
      * @param editor
      */
-    private void showCode(PsiMethod method, Editor editor) {
-        VirtualFile virtualFile = method.getContainingFile().getVirtualFile();
-        PsiFile psiFile = PsiManager.getInstance(project).findFile(virtualFile);
-        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("java");
-        Document document = EditorFactory.getInstance().createDocument(method.getText());
-        Editor ed = EditorFactory.getInstance().createViewer(document, project);
-        Point point = editor.getContentComponent().getLocationOnScreen();
-        Point point1 = editor.visualPositionToXY(editor.getCaretModel().getVisualPosition());
-        point.translate(point1.x, point1.y);
-        RelativePoint relativePoint = new RelativePoint(point);
-        JBScrollPane scrollPane = new JBScrollPane(ed.getComponent());
-        // 创建一个JBPopup
-        JBPopupFactory.getInstance()
-                .createComponentPopupBuilder(scrollPane, null)
-                .setRequestFocus(true)
-                .setResizable(true)
-                .setMovable(true)
-                .setTitle("My Popup")
-                .createPopup().show(relativePoint);
-        // 显示Popup窗口
-        //popup.showCenteredInCurrentWindow(project);
+    private void showCode(PsiMethod psiMethod, Editor edi) {
+//        VirtualFile virtualFile = psiMethod.getContainingFile().getVirtualFile();
+//        PsiFile psiFile = PsiManager.getInstance(project).findFile(virtualFile);
+//        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("java");
+//        Document document = EditorFactory.getInstance().createDocument(psiMethod.getText());
+//        Editor ed = EditorFactory.getInstance().createViewer(document, project);
+//        JBScrollPane scrollPane = new JBScrollPane(ed.getComponent());
+//        // 创建一个JBPopup
+//        JBPopup popup = JBPopupFactory.getInstance()
+//                .createComponentPopupBuilder(scrollPane, editor.getComponent())
+//                .setRequestFocus(true)
+//                .setResizable(true)
+//                .setMovable(true)
+//                .setTitle("My Popup")
+//                .createPopup();
+//        JComponent jComponent = popup.getContent();
+//        jComponent.addAncestorListener(new AncestorListener() {
+//            //打开
+//            @Override
+//            public void ancestorAdded(AncestorEvent ancestorEvent) {
+//            }
+//            //关闭
+//            @Override
+//            public void ancestorRemoved(AncestorEvent ancestorEvent) {
+//                System.out.println("关闭");
+//                EditorFactory.getInstance().releaseEditor(ed);
+//            }
+//            //移动
+//            @Override
+//            public void ancestorMoved(AncestorEvent ancestorEvent) {
+//            }
+//        });
+//        popup.showInBestPositionFor(editor);
     }
 
     /**
@@ -196,12 +246,7 @@ public class ShowCodeAction extends AnAction {
      * @param editor
      */
     private void showImplList(Collection<PsiMethod> methods, Editor editor) {
-        List<PsiMethod> methodList = new ArrayList<>();
-        for (PsiMethod method : methods) {
-            //实现代码
-            //String methodImplementation = method.getText();
-            methodList.add(method);
-        }
+        List<PsiMethod> methodList = new ArrayList<>(methods);
         JBList<PsiMethod> list = new JBList<>(methodList);
         //默认选中第一个
         list.setSelectedIndex(0);
