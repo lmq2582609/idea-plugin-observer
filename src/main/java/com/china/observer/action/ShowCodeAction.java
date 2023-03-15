@@ -1,8 +1,10 @@
 package com.china.observer.action;
 
 import com.china.observer.util.AssertUtil;
+import com.intellij.icons.AllIcons;
 import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.ide.util.PsiNavigationSupport;
+import com.intellij.lang.Language;
 import com.intellij.lang.java.JavaLanguage;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.editor.*;
@@ -12,6 +14,7 @@ import com.intellij.openapi.editor.colors.EditorFontType;
 import com.intellij.openapi.editor.event.EditorMouseAdapter;
 import com.intellij.openapi.editor.event.EditorMouseEvent;
 import com.intellij.openapi.editor.event.EditorMouseListener;
+import com.intellij.openapi.editor.ex.DocumentEx;
 import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.editor.ex.EditorSettingsExternalizable;
 import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory;
@@ -32,9 +35,13 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.popup.*;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Iconable;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
+import com.intellij.psi.codeStyle.CodeStyleManager;
+import com.intellij.psi.codeStyle.CodeStyleSettings;
+import com.intellij.psi.codeStyle.CodeStyleSettingsManager;
 import com.intellij.psi.impl.source.PsiJavaFileImpl;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.OverridingMethodsSearch;
@@ -62,8 +69,7 @@ import javax.swing.event.AncestorListener;
 import javax.swing.text.DefaultEditorKit;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.*;
 import java.util.List;
 import java.util.function.Function;
 
@@ -71,8 +77,6 @@ public class ShowCodeAction extends AnAction {
 
     @Override
     public void actionPerformed(AnActionEvent e) {
-        dataContext = e.getDataContext();
-        project = e.getProject();
         //获取项目
         Project project = e.getProject();
         AssertUtil.isNullNoException(project);
@@ -197,47 +201,33 @@ public class ShowCodeAction extends AnAction {
         }
     }
 
-    private DataContext dataContext;
-    private Project project;
-    public static final DataKey<Editor> MY_EDITOR = DataKey.create("my.plugin.editor");
     /**
      * 展示代码
-     * @param method
+     * @param psiMethod
      * @param editor
      */
-    private void showCode(PsiMethod psiMethod, Editor edi) {
-//        VirtualFile virtualFile = psiMethod.getContainingFile().getVirtualFile();
-//        PsiFile psiFile = PsiManager.getInstance(project).findFile(virtualFile);
-//        FileType fileType = FileTypeManager.getInstance().getFileTypeByExtension("java");
-//        Document document = EditorFactory.getInstance().createDocument(psiMethod.getText());
-//        Editor ed = EditorFactory.getInstance().createViewer(document, project);
-//        JBScrollPane scrollPane = new JBScrollPane(ed.getComponent());
-//        // 创建一个JBPopup
-//        JBPopup popup = JBPopupFactory.getInstance()
-//                .createComponentPopupBuilder(scrollPane, editor.getComponent())
-//                .setRequestFocus(true)
-//                .setResizable(true)
-//                .setMovable(true)
-//                .setTitle("My Popup")
-//                .createPopup();
-//        JComponent jComponent = popup.getContent();
-//        jComponent.addAncestorListener(new AncestorListener() {
-//            //打开
-//            @Override
-//            public void ancestorAdded(AncestorEvent ancestorEvent) {
-//            }
-//            //关闭
-//            @Override
-//            public void ancestorRemoved(AncestorEvent ancestorEvent) {
-//                System.out.println("关闭");
-//                EditorFactory.getInstance().releaseEditor(ed);
-//            }
-//            //移动
-//            @Override
-//            public void ancestorMoved(AncestorEvent ancestorEvent) {
-//            }
-//        });
-//        popup.showInBestPositionFor(editor);
+    private void showCode(PsiMethod psiMethod, Editor editor) {
+        EditorTextField editorTextField = createEditorTextField(psiMethod);
+        JBScrollPane scrollPane = new JBScrollPane(editorTextField);
+        // 创建一个JBPopup
+        JBPopup popup = JBPopupFactory.getInstance()
+                .createComponentPopupBuilder(scrollPane, editor.getComponent())
+                .setRequestFocus(true)
+                .setResizable(true)
+                .setMovable(true)
+                .setTitle("Show Code")
+                .createPopup();
+        popup.addListener(new JBPopupListener() {
+            @Override
+            public void onClosed(@NotNull LightweightWindowEvent event) {
+                //释放资源
+                if (editorTextField.getEditor() != null) {
+                    System.out.println("释放资源");
+                    EditorFactory.getInstance().releaseEditor(editorTextField.getEditor());
+                }
+            }
+        });
+        popup.showInFocusCenter();
     }
 
     /**
@@ -301,4 +291,28 @@ public class ShowCodeAction extends AnAction {
         popup.showInBestPositionFor(editor);
     }
 
+    private EditorTextField createEditorTextField(PsiMethod psiMethod) {
+        //处理文本-格式化代码
+        String[] split = psiMethod.getText().split("\\n");
+        StringJoiner sj = new StringJoiner("\n");
+        for (String s : split) {
+            //如果第1个字符是空格，则删除4个空格
+            if (Character.isWhitespace(s.charAt(0))) {
+                sj.add(s.substring(4));
+            } else {
+                sj.add(s);
+            }
+        }
+        //只读
+        Document document = EditorFactory.getInstance().createDocument(sj.toString());
+        document.setReadOnly(true);
+        PsiFile psiFile = psiMethod.getContainingFile();
+        Language language = psiFile.getLanguage();
+        EditorTextField editorTextField = new EditorTextField(document, psiMethod.getProject(), language.getAssociatedFileType());
+        //获取默认样式
+        EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
+        editorTextField.setFont(scheme.getFont(EditorFontType.PLAIN));
+        editorTextField.setOneLineMode(false);
+        return editorTextField;
+    }
 }
