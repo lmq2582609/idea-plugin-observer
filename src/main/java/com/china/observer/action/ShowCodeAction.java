@@ -3,6 +3,7 @@ package com.china.observer.action;
 import com.china.observer.util.AssertUtil;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.highlighter.JavaFileType;
+import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.ide.util.PsiNavigationSupport;
 import com.intellij.lang.Language;
 import com.intellij.lang.java.JavaLanguage;
@@ -43,6 +44,7 @@ import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager;
 import com.intellij.psi.impl.source.PsiJavaFileImpl;
+import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.OverridingMethodsSearch;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -103,7 +105,15 @@ public class ShowCodeAction extends AnAction {
             PsiElement resolve = reference.resolve();
             //方法 -> 需要判断接口还是实现类
             if (resolve instanceof PsiMethod) {
-                executePsiMethod(resolve, project, editor);
+                //检查是否为get/set
+                PsiField psiField = checkGetterOrSetter(resolve);
+                if (psiField != null) {
+                    //展示字段信息
+                    showCode(psiField, editor);
+                } else {
+                    //其他函数，直接展示
+                    executePsiMethod(resolve, project, editor);
+                }
             }
             //当前类字段
             else if (resolve instanceof PsiField) {
@@ -165,49 +175,63 @@ public class ShowCodeAction extends AnAction {
             String projectBasePath = project.getBasePath();
             // 第三方的代码 - 同样要检查接口还是实现类
             if (!absolutePath.startsWith(projectBasePath)) {
+                //检查是否为mapper
+                PsiClass containingClass = pm.getContainingClass();
+                AssertUtil.isNullNoException(containingClass);
 
+
+
+
+
+                //查找项目中所有XML文件
+                Collection<VirtualFile> projectAllXML = FileTypeIndex.getFiles(XmlFileType.INSTANCE,
+                        GlobalSearchScope.projectScope(project));
+                //未查找到xml文件，跳过
+                if (projectAllXML.size() == 0) {
+                    return;
+                }
 
                 System.out.println();
-
+            } else {
+                //处理本地项目代码
+                //方法所在的类
+                PsiClass containingClass = pm.getContainingClass();
+                AssertUtil.isNullNoException(containingClass);
+                //接口
+                if (containingClass.isInterface()) {
+                    //在整个项目中，查找获取到的方法(所有，包括实现类的方法)
+                    Collection<PsiMethod> methods = OverridingMethodsSearch.search(pm, GlobalSearchScope.projectScope(project), true)
+                            .findAll();
+                    //如果方法有多个实现，展示列表，则进行选择
+                    if (methods.size() > 1) {
+                        showImplList(methods, editor);
+                    } else if (methods.size() == 1) {
+                        //只有 1 个实现，直接展示
+                        showCode(methods.iterator().next(), editor);
+                    } else {
+                        //插件内部错误
+                        Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
+                        return;
+                    }
+                }
+                //实现类代码，直接展示
+                else {
+                    showCode(pm, editor);
+                }
             }
         } else {
             Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
             return;
         }
-        //处理本地项目代码
-        //方法所在的类
-        PsiClass containingClass = pm.getContainingClass();
-        AssertUtil.isNullNoException(containingClass);
-        //接口
-        if (containingClass.isInterface()) {
-            //在整个项目中，查找获取到的方法(所有，包括实现类的方法)
-            Collection<PsiMethod> methods = OverridingMethodsSearch.search(pm, GlobalSearchScope.projectScope(project), true)
-                    .findAll();
-            //如果方法有多个实现，展示列表，则进行选择
-            if (methods.size() > 1) {
-                showImplList(methods, editor);
-            } else if (methods.size() == 1) {
-                //只有 1 个实现，直接展示
-                showCode(methods.iterator().next(), editor);
-            } else {
-                //插件内部错误
-                Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
-                return;
-            }
-        }
-        //实现类代码，直接展示
-        else {
-            showCode(pm, editor);
-        }
     }
 
     /**
      * 展示代码
-     * @param psiMethod
+     * @param psi
      * @param editor
      */
-    private void showCode(PsiMethod psiMethod, Editor editor) {
-        EditorTextField editorTextField = createEditorTextField(psiMethod);
+    private <T extends PsiElement> void showCode(T psi, Editor editor) {
+        EditorTextField editorTextField = createEditorTextField(psi);
         JBScrollPane scrollPane = new JBScrollPane(editorTextField);
         // 创建一个JBPopup
         JBPopup popup = JBPopupFactory.getInstance()
@@ -291,9 +315,14 @@ public class ShowCodeAction extends AnAction {
         popup.showInBestPositionFor(editor);
     }
 
-    private EditorTextField createEditorTextField(PsiMethod psiMethod) {
+    /**
+     * 格式化代码
+     * @param code
+     * @return
+     */
+    private String formatCode(String code) {
         //处理文本-格式化代码
-        String[] split = psiMethod.getText().split("\\n");
+        String[] split = code.split("\\n");
         StringJoiner sj = new StringJoiner("\n");
         for (String s : split) {
             //如果第1个字符是空格，则删除4个空格
@@ -303,16 +332,91 @@ public class ShowCodeAction extends AnAction {
                 sj.add(s);
             }
         }
+        return sj.toString();
+    }
+
+    /**
+     * 创建代码编辑器
+     * @param psi
+     * @return
+     */
+    private <T extends PsiElement> EditorTextField createEditorTextField(T psi) {
+        //格式化代码
+        String code = formatCode(psi.getText());
         //只读
-        Document document = EditorFactory.getInstance().createDocument(sj.toString());
+        Document document = EditorFactory.getInstance().createDocument(code);
         document.setReadOnly(true);
-        PsiFile psiFile = psiMethod.getContainingFile();
+        PsiFile psiFile = psi.getContainingFile();
         Language language = psiFile.getLanguage();
-        EditorTextField editorTextField = new EditorTextField(document, psiMethod.getProject(), language.getAssociatedFileType());
+        EditorTextField editorTextField = new EditorTextField(document, psi.getProject(), language.getAssociatedFileType());
         //获取默认样式
         EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
         editorTextField.setFont(scheme.getFont(EditorFontType.PLAIN));
         editorTextField.setOneLineMode(false);
         return editorTextField;
+    }
+
+    /**
+     * 检查是否为get/set方法，如果是则返回该字段，如果不是则返回null
+     * @param element
+     * @return
+     */
+    private PsiField checkGetterOrSetter(PsiElement element) {
+        PsiMethod method = (PsiMethod) element;
+        PsiClass containingClass = method.getContainingClass();
+        if (containingClass == null) {
+            return null;
+        }
+        String methodName = method.getName();
+        if (methodName.startsWith("get")) {
+            String fieldName = methodName.substring(3);
+            PsiType returnType = method.getReturnType();
+            //get方法返回结果的类型与字段类型一致
+            PsiField psiField = selectClassField(containingClass, fieldName);
+            return Optional.ofNullable(psiField)
+                    .filter(field -> field.getType().getCanonicalText().equals(returnType.getCanonicalText()))
+                    .orElse(null);
+        }
+        //set方法必须有1个参数
+        if (methodName.startsWith("set")) {
+            //检查参数
+            PsiParameter[] parameters = method.getParameterList().getParameters();
+            if (parameters.length != 1) {
+                return null;
+            }
+            String fieldName = methodName.substring(3);
+            PsiParameter parameter = parameters[0];
+            //set方法的参数类型与字段类型一致
+            PsiField psiField = selectClassField(containingClass, fieldName);
+            return Optional.ofNullable(psiField)
+                    .filter(field -> field.getType().getCanonicalText().equals(parameter.getType().getCanonicalText()))
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    /**
+     * 查找类中的字段
+     * @param psiClass
+     * @param fieldName
+     * @return
+     */
+    private PsiField selectClassField(PsiClass psiClass, String fieldName) {
+        //首字母转小写
+        String field = fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
+        //先使用findFiledByName查找一遍
+        PsiField psiField = psiClass.findFieldByName(field, true);
+        if (psiField != null) {
+            return psiField;
+        }
+        //未查找到，再遍历查找一遍，但此处不能查找父类字段
+        PsiField[] fields = psiClass.getFields();
+        fieldName = fieldName.toLowerCase();
+        for (PsiField f : fields) {
+            if (f.getName().toLowerCase().equals(fieldName)) {
+                return f;
+            }
+        }
+        return null;
     }
 }
