@@ -1,5 +1,6 @@
 package com.china.observer.action;
 
+import com.china.observer.entity.MethodXmlBO;
 import com.china.observer.util.AssertUtil;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.highlighter.JavaFileType;
@@ -49,6 +50,8 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.OverridingMethodsSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtilBase;
+import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.xml.XmlTag;
 import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBColor;
@@ -168,60 +171,50 @@ public class ShowCodeAction extends AnAction {
         PsiMethod pm = (PsiMethod) pe;
         //检查PsiMethod是本地代码还是第三方jar包的代码，通过文件来识别
         VirtualFile virtualFile = pm.getContainingFile().getVirtualFile();
-        if (virtualFile != null) {
-            //第三方代码文件路径
-            String absolutePath = virtualFile.getPath();
-            //本地项目路径
-            String projectBasePath = project.getBasePath();
-            // 第三方的代码 - 同样要检查接口还是实现类
-            if (!absolutePath.startsWith(projectBasePath)) {
-                //检查是否为mapper
-                PsiClass containingClass = pm.getContainingClass();
-                AssertUtil.isNullNoException(containingClass);
-
-
-
-
-
-                //查找项目中所有XML文件
-                Collection<VirtualFile> projectAllXML = FileTypeIndex.getFiles(XmlFileType.INSTANCE,
-                        GlobalSearchScope.projectScope(project));
-                //未查找到xml文件，跳过
-                if (projectAllXML.size() == 0) {
-                    return;
-                }
-
-                System.out.println();
-            } else {
-                //处理本地项目代码
-                //方法所在的类
-                PsiClass containingClass = pm.getContainingClass();
-                AssertUtil.isNullNoException(containingClass);
-                //接口
-                if (containingClass.isInterface()) {
-                    //在整个项目中，查找获取到的方法(所有，包括实现类的方法)
-                    Collection<PsiMethod> methods = OverridingMethodsSearch.search(pm, GlobalSearchScope.projectScope(project), true)
-                            .findAll();
-                    //如果方法有多个实现，展示列表，则进行选择
-                    if (methods.size() > 1) {
-                        showImplList(methods, editor);
-                    } else if (methods.size() == 1) {
-                        //只有 1 个实现，直接展示
-                        showCode(methods.iterator().next(), editor);
-                    } else {
-                        //插件内部错误
-                        Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
-                        return;
-                    }
-                }
-                //实现类代码，直接展示
-                else {
-                    showCode(pm, editor);
-                }
-            }
-        } else {
+        if (virtualFile == null) {
             Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
             return;
+        }
+        //第三方代码文件路径
+        String absolutePath = virtualFile.getPath();
+        //本地项目路径
+        String projectBasePath = project.getBasePath();
+        // 第三方的代码 - 同样要检查接口还是实现类
+        if (!absolutePath.equals(projectBasePath)) {
+            XmlTag xmlTag = selectMethodRelationXml(pm);
+            //不为空，说明是mybatis的mapper
+            if (xmlTag != null) {
+                showCode(xmlTag, editor);
+            } else {
+                //其他第三方代码
+
+            }
+        } else {
+            //处理本地项目代码
+            //方法所在的类
+            PsiClass containingClass = pm.getContainingClass();
+            AssertUtil.isNullNoException(containingClass);
+            //接口
+            if (containingClass.isInterface()) {
+                //在整个项目中，查找获取到的方法(所有，包括实现类的方法)
+                Collection<PsiMethod> methods = OverridingMethodsSearch.search(pm, GlobalSearchScope.projectScope(project), true)
+                        .findAll();
+                //如果方法有多个实现，展示列表，则进行选择
+                if (methods.size() > 1) {
+                    showImplList(methods, editor);
+                } else if (methods.size() == 1) {
+                    //只有 1 个实现，直接展示
+                    showCode(methods.iterator().next(), editor);
+                } else {
+                    //插件内部错误
+                    Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
+                    return;
+                }
+            }
+            //实现类代码，直接展示
+            else {
+                showCode(pm, editor);
+            }
         }
     }
 
@@ -415,6 +408,43 @@ public class ShowCodeAction extends AnAction {
         for (PsiField f : fields) {
             if (f.getName().toLowerCase().equals(fieldName)) {
                 return f;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 获取方法关联的XML
+     * @param pm
+     * @return
+     */
+    private XmlTag selectMethodRelationXml(PsiMethod pm) {
+        //检查是否为mapper
+        PsiClass containingClass = pm.getContainingClass();
+        //查找项目中所有XML文件
+        Collection<VirtualFile> projectAllXML = FileTypeIndex.getFiles(XmlFileType.INSTANCE,
+                GlobalSearchScope.projectScope(pm.getProject()));
+        if (projectAllXML.size() == 0) {
+            return null;
+        }
+        //查找对应的sql
+        for (VirtualFile virtualFile : projectAllXML) {
+            //检查是否是mapper，返回xml根节点
+            XmlTag rootTag = MethodXmlBO.checkIsMapper(virtualFile, containingClass);
+            if (rootTag == null) {
+                continue;
+            }
+            //此处说明，这个接口是一个mapper，继续查找对应的sql
+            //获取 mapper.xml 子节点
+            XmlTag[] subTags = rootTag.getSubTags();
+            //方法与xml中的子节点匹配
+            for (XmlTag subTag : subTags) {
+                String id = subTag.getAttributeValue("id");
+                //如果方法名与mapper.xml中的id一致，可以添加图标
+                if (pm.getName().equals(id)) {
+                    //匹配成功
+                    return subTag;
+                }
             }
         }
         return null;
