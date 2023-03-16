@@ -1,5 +1,6 @@
 package com.china.observer.entity;
 
+import com.china.observer.util.PsiUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
@@ -58,6 +59,8 @@ public class MethodXmlBO {
         if (rootTag == null || !"mapper".equals(rootTag.getName())){
             return null;
         }
+        //检查这个class是否为第三方
+        String packageName1 = PsiUtil.getPackageName(containingClass);
         //包路径
         String packageName = ((PsiJavaFileImpl) containingClass.getContainingFile()).getPackageName() + "." + containingClass.getName();
         //检查这个class与xml中的namespace是否一致

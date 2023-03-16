@@ -1,103 +1,72 @@
 package com.china.observer.action;
 
 import com.china.observer.entity.MethodXmlBO;
+import com.china.observer.service.PsiElementHandlerService;
+import com.china.observer.service.impl.PsiElementHandlerServiceImpl;
 import com.china.observer.util.AssertUtil;
-import com.intellij.icons.AllIcons;
-import com.intellij.ide.highlighter.JavaFileType;
+import com.china.observer.util.PsiUtil;
 import com.intellij.ide.highlighter.XmlFileType;
-import com.intellij.ide.util.PsiNavigationSupport;
 import com.intellij.lang.Language;
-import com.intellij.lang.java.JavaLanguage;
-import com.intellij.openapi.actionSystem.*;
-import com.intellij.openapi.editor.*;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.EditorFontType;
-import com.intellij.openapi.editor.event.EditorMouseAdapter;
-import com.intellij.openapi.editor.event.EditorMouseEvent;
-import com.intellij.openapi.editor.event.EditorMouseListener;
-import com.intellij.openapi.editor.ex.DocumentEx;
-import com.intellij.openapi.editor.ex.EditorEx;
-import com.intellij.openapi.editor.ex.EditorSettingsExternalizable;
-import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory;
-import com.intellij.openapi.editor.impl.DocumentImpl;
-import com.intellij.openapi.editor.impl.EditorImpl;
-import com.intellij.openapi.editor.impl.EditorMarkupModelImpl;
-import com.intellij.openapi.editor.markup.HighlighterLayer;
-import com.intellij.openapi.editor.markup.HighlighterTargetArea;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.fileTypes.FileType;
-import com.intellij.openapi.fileTypes.FileTypeManager;
-import com.intellij.openapi.fileTypes.PlainTextLanguage;
-import com.intellij.openapi.fileTypes.StdFileTypes;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.ui.popup.*;
-import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.ui.popup.JBPopup;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.ui.popup.JBPopupListener;
+import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.openapi.util.Iconable;
-import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
-import com.intellij.psi.codeStyle.CodeStyleManager;
-import com.intellij.psi.codeStyle.CodeStyleSettings;
-import com.intellij.psi.codeStyle.CodeStyleSettingsManager;
 import com.intellij.psi.impl.source.PsiJavaFileImpl;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.OverridingMethodsSearch;
-import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.psi.util.PsiUtilBase;
-import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.ui.EditorTextField;
-import com.intellij.ui.JBColor;
-import com.intellij.ui.ScrollPaneFactory;
-import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
-import com.intellij.ui.popup.BalloonPopupBuilderImpl;
-import org.cef.CefApp;
-import org.cef.CefClient;
-import org.cef.CefSettings;
-import org.cef.browser.CefBrowser;
-import org.cef.handler.CefAppHandlerAdapter;
-import org.cef.handler.CefLoadHandlerAdapter;
 import org.jetbrains.annotations.NotNull;
-
 import javax.swing.*;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
-import javax.swing.text.DefaultEditorKit;
 import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.util.List;
-import java.util.function.Function;
+import java.util.*;
 
 public class ShowCodeAction extends AnAction {
 
+    private Project project;
+
+    private Editor editor;
+
     @Override
     public void actionPerformed(AnActionEvent e) {
-        //获取项目
-        Project project = e.getProject();
-        AssertUtil.isNullNoException(project);
-        //获取编辑器
-        Editor editor = e.getData(CommonDataKeys.EDITOR);
-        AssertUtil.isNullNoException(editor);
+        this.project = e.getProject();
+        this.editor = e.getData(CommonDataKeys.EDITOR);
+        if (Objects.isNull(project) || Objects.isNull(editor)) {
+            return;
+        }
         //通过项目的文档管理器，获取当前编辑器展示的文件
         PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument());
-        AssertUtil.isNullNoException(psiFile);
+        if (Objects.isNull(psiFile)) {
+            return;
+        }
         //获取展示的文件中，光标所在的PsiElement
         PsiElement element = psiFile.findElementAt(editor.getCaretModel().getOffset());
-        AssertUtil.isNullNoException(element);
+        if (Objects.isNull(element)) {
+            return;
+        }
         //必须是 PsiIdentifier 才处理
-        if (! (element instanceof PsiIdentifier)) {
-            //提示注意光标位置
-            Messages.showMessageDialog("Plugin internal error.", "Notification", Messages.getInformationIcon());
+        if (!(element instanceof PsiIdentifier)) {
             return;
         }
         //获取上一级，一般类型是 PsiReferenceExpression
@@ -109,70 +78,48 @@ public class ShowCodeAction extends AnAction {
             //方法 -> 需要判断接口还是实现类
             if (resolve instanceof PsiMethod) {
                 //检查是否为get/set
-                PsiField psiField = checkGetterOrSetter(resolve);
+                PsiElementHandlerService handlerService = new PsiElementHandlerServiceImpl();
+                PsiField psiField = handlerService.checkMethodIsGetterOrSetter((PsiMethod) resolve);
                 if (psiField != null) {
-                    //展示字段信息
-                    showCode(psiField, editor);
+                    showCode(psiField);
                 } else {
-                    //其他函数，直接展示
-                    executePsiMethod(resolve, project, editor);
+                    //其他函数
+                    executePsiMethod(resolve);
                 }
+            } else if (resolve instanceof PsiField) {
+                //当前类字段
+                showCode(resolve);
+            } else if (resolve instanceof PsiLocalVariable) {
+                //局部变量
+                showCode(resolve);
             }
-            //当前类字段
-            else if (resolve instanceof PsiField) {
-
-            }
-            //局部变量
-            else if (resolve instanceof PsiLocalVariable) {
-
-            } else {
-                //插件内部错误
-                Messages.showMessageDialog("Plugin internal error", "Notification", Messages.getInformationIcon());
-                return;
-            }
+        } else if (pe instanceof PsiField) {
+            //悬浮在当前类的字段上 -> PsiField
+            showCode(pe);
         }
-        //悬浮在类上 -> PsiJavaCodeReferenceElement
-        else if (pe instanceof PsiJavaCodeReferenceElement) {
-
-
-
-        }
-        //悬浮在当前类的字段上 -> PsiField
-        else if (pe instanceof PsiField) {
-
-
-
-        }
-        //悬浮在当前函数的参数上 -> PsiParameter
-        else if (pe instanceof PsiParameter) {
-
-
-
-        }
-        //悬浮在函数的名字上 -> PsiMethod
-        else if (pe instanceof PsiMethod) {
-            executePsiMethod(pe, project, editor);
-        } else {
-            //插件内部错误
-            Messages.showMessageDialog("Plugin internal error", "Notification", Messages.getInformationIcon());
-            return;
-        }
-
     }
 
     /**
      * 执行method判定
      * @param pe
-     * @param project
-     * @param editor
      */
-    private void executePsiMethod(PsiElement pe, Project project, Editor editor) {
-        //直接放到了函数名字上，需要判断是接口还是实现，接口的话可能有多个实现，实现的话直接展示
+    private void executePsiMethod(PsiElement pe) {
+        //直接放到了函数名字上
         PsiMethod pm = (PsiMethod) pe;
+        //需要判断是接口还是实现，接口的话可能有多个实现，实现的话直接展示。接口还需要判断是否为mybatis的mapper，如果是mapper展示对应的xml代码
+
+
+
+
+
+
+
+
+
+
         //检查PsiMethod是本地代码还是第三方jar包的代码，通过文件来识别
         VirtualFile virtualFile = pm.getContainingFile().getVirtualFile();
         if (virtualFile == null) {
-            Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
             return;
         }
         //第三方代码文件路径
@@ -180,14 +127,14 @@ public class ShowCodeAction extends AnAction {
         //本地项目路径
         String projectBasePath = project.getBasePath();
         // 第三方的代码 - 同样要检查接口还是实现类
-        if (!absolutePath.equals(projectBasePath)) {
+        if (!absolutePath.startsWith(projectBasePath)) {
             XmlTag xmlTag = selectMethodRelationXml(pm);
             //不为空，说明是mybatis的mapper
             if (xmlTag != null) {
-                showCode(xmlTag, editor);
+                showCode(xmlTag);
             } else {
                 //其他第三方代码
-
+                showCode(pm);
             }
         } else {
             //处理本地项目代码
@@ -204,7 +151,7 @@ public class ShowCodeAction extends AnAction {
                     showImplList(methods, editor);
                 } else if (methods.size() == 1) {
                     //只有 1 个实现，直接展示
-                    showCode(methods.iterator().next(), editor);
+                    showCode(methods.iterator().next());
                 } else {
                     //插件内部错误
                     Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
@@ -213,7 +160,7 @@ public class ShowCodeAction extends AnAction {
             }
             //实现类代码，直接展示
             else {
-                showCode(pm, editor);
+                showCode(pm);
             }
         }
     }
@@ -221,12 +168,10 @@ public class ShowCodeAction extends AnAction {
     /**
      * 展示代码
      * @param psi
-     * @param editor
      */
-    private <T extends PsiElement> void showCode(T psi, Editor editor) {
-        EditorTextField editorTextField = createEditorTextField(psi);
+    private <T extends PsiElement> void showCode(T psi) {
+        EditorTextField editorTextField = PsiUtil.createEditorTextField(psi);
         JBScrollPane scrollPane = new JBScrollPane(editorTextField);
-        // 创建一个JBPopup
         JBPopup popup = JBPopupFactory.getInstance()
                 .createComponentPopupBuilder(scrollPane, editor.getComponent())
                 .setRequestFocus(true)
@@ -237,9 +182,7 @@ public class ShowCodeAction extends AnAction {
         popup.addListener(new JBPopupListener() {
             @Override
             public void onClosed(@NotNull LightweightWindowEvent event) {
-                //释放资源
                 if (editorTextField.getEditor() != null) {
-                    System.out.println("释放资源");
                     EditorFactory.getInstance().releaseEditor(editorTextField.getEditor());
                 }
             }
@@ -282,7 +225,7 @@ public class ShowCodeAction extends AnAction {
                     //展示对应方法的实现代码
                     PsiMethod pm = list.getSelectedValue();
                     if (pm != null) {
-                        showCode(pm, editor);
+                        showCode(pm);
                     }
                 }
             }
@@ -309,111 +252,6 @@ public class ShowCodeAction extends AnAction {
     }
 
     /**
-     * 格式化代码
-     * @param code
-     * @return
-     */
-    private String formatCode(String code) {
-        //处理文本-格式化代码
-        String[] split = code.split("\\n");
-        StringJoiner sj = new StringJoiner("\n");
-        for (String s : split) {
-            //如果第1个字符是空格，则删除4个空格
-            if (Character.isWhitespace(s.charAt(0))) {
-                sj.add(s.substring(4));
-            } else {
-                sj.add(s);
-            }
-        }
-        return sj.toString();
-    }
-
-    /**
-     * 创建代码编辑器
-     * @param psi
-     * @return
-     */
-    private <T extends PsiElement> EditorTextField createEditorTextField(T psi) {
-        //格式化代码
-        String code = formatCode(psi.getText());
-        //只读
-        Document document = EditorFactory.getInstance().createDocument(code);
-        document.setReadOnly(true);
-        PsiFile psiFile = psi.getContainingFile();
-        Language language = psiFile.getLanguage();
-        EditorTextField editorTextField = new EditorTextField(document, psi.getProject(), language.getAssociatedFileType());
-        //获取默认样式
-        EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
-        editorTextField.setFont(scheme.getFont(EditorFontType.PLAIN));
-        editorTextField.setOneLineMode(false);
-        return editorTextField;
-    }
-
-    /**
-     * 检查是否为get/set方法，如果是则返回该字段，如果不是则返回null
-     * @param element
-     * @return
-     */
-    private PsiField checkGetterOrSetter(PsiElement element) {
-        PsiMethod method = (PsiMethod) element;
-        PsiClass containingClass = method.getContainingClass();
-        if (containingClass == null) {
-            return null;
-        }
-        String methodName = method.getName();
-        if (methodName.startsWith("get")) {
-            String fieldName = methodName.substring(3);
-            PsiType returnType = method.getReturnType();
-            //get方法返回结果的类型与字段类型一致
-            PsiField psiField = selectClassField(containingClass, fieldName);
-            return Optional.ofNullable(psiField)
-                    .filter(field -> field.getType().getCanonicalText().equals(returnType.getCanonicalText()))
-                    .orElse(null);
-        }
-        //set方法必须有1个参数
-        if (methodName.startsWith("set")) {
-            //检查参数
-            PsiParameter[] parameters = method.getParameterList().getParameters();
-            if (parameters.length != 1) {
-                return null;
-            }
-            String fieldName = methodName.substring(3);
-            PsiParameter parameter = parameters[0];
-            //set方法的参数类型与字段类型一致
-            PsiField psiField = selectClassField(containingClass, fieldName);
-            return Optional.ofNullable(psiField)
-                    .filter(field -> field.getType().getCanonicalText().equals(parameter.getType().getCanonicalText()))
-                    .orElse(null);
-        }
-        return null;
-    }
-
-    /**
-     * 查找类中的字段
-     * @param psiClass
-     * @param fieldName
-     * @return
-     */
-    private PsiField selectClassField(PsiClass psiClass, String fieldName) {
-        //首字母转小写
-        String field = fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
-        //先使用findFiledByName查找一遍
-        PsiField psiField = psiClass.findFieldByName(field, true);
-        if (psiField != null) {
-            return psiField;
-        }
-        //未查找到，再遍历查找一遍，但此处不能查找父类字段
-        PsiField[] fields = psiClass.getFields();
-        fieldName = fieldName.toLowerCase();
-        for (PsiField f : fields) {
-            if (f.getName().toLowerCase().equals(fieldName)) {
-                return f;
-            }
-        }
-        return null;
-    }
-
-    /**
      * 获取方法关联的XML
      * @param pm
      * @return
@@ -427,8 +265,14 @@ public class ShowCodeAction extends AnAction {
         if (projectAllXML.size() == 0) {
             return null;
         }
+        //本地项目路径 - 忽略路径
+        String ideaPath = containingClass.getProject().getBasePath() + "/.idea";
         //查找对应的sql
         for (VirtualFile virtualFile : projectAllXML) {
+            //忽略.idea目录，跳过
+            if (virtualFile.getPath().startsWith(ideaPath)) {
+                continue;
+            }
             //检查是否是mapper，返回xml根节点
             XmlTag rootTag = MethodXmlBO.checkIsMapper(virtualFile, containingClass);
             if (rootTag == null) {
