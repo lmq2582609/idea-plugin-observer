@@ -11,15 +11,15 @@
 ## 演示图
 <table>
     <tr>
-        <td>![演示图](/images/20230317163327.png)</td>
-        <td>![演示图](/images/20230317163439.png)</td>
+        <td>![演示图](images/20230317163327.png)</td>
+        <td>![演示图](images/20230317163439.png)</td>
     </tr>
     <tr>
-        <td>![演示图](/images/20230317163523.png)</td>
-        <td>![演示图](/images/20230317163553.png)</td>
+        <td>![演示图](images/20230317163523.png)</td>
+        <td>![演示图](images/20230317163553.png)</td>
     </tr>
     <tr>
-        <td>![演示图](/images/20230317163620.png)</td>
+        <td>![演示图](images/20230317163620.png)</td>
         <td></td>
     </tr>
 </table>
