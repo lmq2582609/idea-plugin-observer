@@ -11,15 +11,15 @@
 ## 演示图
 <table>
     <tr>
-        <td><img src="https://gitee.com/marlife/idea-plugin-observer/blob/master/images/20230317163327.png"/></td>
-        <td><img src="https://gitee.com/marlife/idea-plugin-observer/blob/master/images/20230317163439.png"/></td>
+        <td><img src="https://gitee.com/marlife/idea-plugin-observer/raw/master/images/20230317163327.png"/></td>
+        <td><img src="https://gitee.com/marlife/idea-plugin-observer/raw/master/images/20230317163439.png"/></td>
     </tr>
     <tr>
-        <td><img src="https://gitee.com/marlife/idea-plugin-observer/blob/master/images/20230317163523.png"/></td>
-        <td><img src="https://gitee.com/marlife/idea-plugin-observer/blob/master/images/20230317163553.png"/></td>
+        <td><img src="https://gitee.com/marlife/idea-plugin-observer/raw/master/images/20230317163523.png"/></td>
+        <td><img src="https://gitee.com/marlife/idea-plugin-observer/raw/master/images/20230317163553.png"/></td>
     </tr>
     <tr>
-        <td><img src="https://gitee.com/marlife/idea-plugin-observer/blob/master/images/20230317163620.png"/></td>
+        <td><img src="https://gitee.com/marlife/idea-plugin-observer/raw/master/images/20230317163620.png"/></td>
         <td></td>
     </tr>
 </table>
