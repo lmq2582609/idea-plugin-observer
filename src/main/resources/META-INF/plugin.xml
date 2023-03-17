@@ -1,30 +1,22 @@
-<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+
     <id>com.china.observer</id>
-
-    <!-- Public plugin name should be written in Title Case.
-         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
     <name>Observer</name>
+    <vendor email="438562332@qq.com" url="https://lmq2582609.github.io/sun-blog/">sun</vendor>
 
-    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="support@yourcompany.com" url="https://www.yourcompany.com">YourCompany</vendor>
+    <description>
+        <![CDATA[
+            To add a "Show Code" option to the right-click menu, which pops up a window to view the specific code at the current position.
+            <br/>1. When the cursor is on a function, using "Show Code" displays the specific code of that function in the pop-up window.
+            <br/>2. When the cursor is on a get or set function of an entity class, using "Show Code" displays the code of the corresponding field in the pop-up window.
+            <br/>3. When the cursor is on a Mybatis function, using "Show Code" displays the corresponding SQL in the pop-up window, and it also parses the <include /> nodes.
+            <br/>4. In the Mybatis mapper interface and its corresponding mapper.xml, buttons are added to enable jumping back and forth between them.
+        ]]>
+    </description>
 
-    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
-         Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
-         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
-    <description><![CDATA[
-    Enter short description for your plugin here.<br>
-    <em>most HTML tags may be used</em>
-  ]]></description>
-
-    <!-- Product and plugin compatibility requirements.
-         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
 
-    <!-- Extension points defined by the plugin.
-         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <codeInsight.lineMarkerProvider language="JAVA" implementationClass="com.china.observer.ui.GutterMapperIcon"/>
         <codeInsight.lineMarkerProvider language="XML" implementationClass="com.china.observer.ui.GutterMapperXmlIcon"/>
