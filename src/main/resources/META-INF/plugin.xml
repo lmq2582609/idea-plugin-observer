@@ -11,6 +11,7 @@
             <br/>2. When the cursor is on a get or set function of an entity class, using "Show Code" displays the code of the corresponding field in the pop-up window.
             <br/>3. When the cursor is on a Mybatis function, using "Show Code" displays the corresponding SQL in the pop-up window, and it also parses the <include /> nodes.
             <br/>4. In the Mybatis mapper interface and its corresponding mapper.xml, buttons are added to enable jumping back and forth between them.
+            https://gitee.com/marlife/idea-plugin-observer
         ]]>
     </description>
 
