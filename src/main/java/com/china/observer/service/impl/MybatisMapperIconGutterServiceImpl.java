@@ -2,6 +2,7 @@ package com.china.observer.service.impl;
 
 import com.china.observer.entity.MethodXmlBO;
 import com.china.observer.service.MybatisIconGutterService;
+import com.china.observer.service.PsiElementHandlerService;
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo;
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder;
 import com.intellij.icons.AllIcons;
@@ -38,10 +39,11 @@ public class MybatisMapperIconGutterServiceImpl implements MybatisIconGutterServ
         if (projectAllXML.size() == 0) {
             return Collections.emptyList();
         }
+        PsiElementHandlerService handlerService = new PsiElementHandlerServiceImpl();
         List<MethodXmlBO> methodXmlBOList = new ArrayList<>();
         projectAllXML.forEach(virtualFile -> {
             //检查是否是mapper，返回xml根节点
-            XmlTag rootTag = MethodXmlBO.checkIsMapper(virtualFile, psiClass);
+            XmlTag rootTag = handlerService.checkIsMapper(virtualFile, psiClass);
             if (rootTag == null) {
                 return;
             }

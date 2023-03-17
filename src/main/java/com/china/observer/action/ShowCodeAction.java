@@ -1,32 +1,22 @@
 package com.china.observer.action;
 
-import com.china.observer.entity.MethodXmlBO;
 import com.china.observer.service.PsiElementHandlerService;
 import com.china.observer.service.impl.PsiElementHandlerServiceImpl;
-import com.china.observer.util.AssertUtil;
 import com.china.observer.util.PsiUtil;
-import com.intellij.ide.highlighter.XmlFileType;
-import com.intellij.lang.Language;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
-import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
-import com.intellij.openapi.editor.colors.EditorColorsManager;
-import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.EditorFontType;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.ui.popup.JBPopupListener;
 import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.openapi.util.Iconable;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.source.PsiJavaFileImpl;
-import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.OverridingMethodsSearch;
 import com.intellij.psi.xml.XmlTag;
@@ -39,8 +29,10 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.*;
+import java.util.Objects;
 
 public class ShowCodeAction extends AnAction {
 
@@ -83,8 +75,8 @@ public class ShowCodeAction extends AnAction {
                 if (psiField != null) {
                     showCode(psiField);
                 } else {
-                    //其他函数
-                    executePsiMethod(resolve);
+                    //其他函数的判定
+                    executePsiMethod(resolve, handlerService);
                 }
             } else if (resolve instanceof PsiField) {
                 //当前类字段
@@ -103,46 +95,20 @@ public class ShowCodeAction extends AnAction {
      * 执行method判定
      * @param pe
      */
-    private void executePsiMethod(PsiElement pe) {
+    private void executePsiMethod(PsiElement pe, PsiElementHandlerService handlerService) {
         //直接放到了函数名字上
         PsiMethod pm = (PsiMethod) pe;
-        //需要判断是接口还是实现，接口的话可能有多个实现，实现的话直接展示。接口还需要判断是否为mybatis的mapper，如果是mapper展示对应的xml代码
-
-
-
-
-
-
-
-
-
-
-        //检查PsiMethod是本地代码还是第三方jar包的代码，通过文件来识别
-        VirtualFile virtualFile = pm.getContainingFile().getVirtualFile();
-        if (virtualFile == null) {
+        PsiClass psiClass = pm.getContainingClass();
+        if (Objects.isNull(psiClass)) {
             return;
         }
-        //第三方代码文件路径
-        String absolutePath = virtualFile.getPath();
-        //本地项目路径
-        String projectBasePath = project.getBasePath();
-        // 第三方的代码 - 同样要检查接口还是实现类
-        if (!absolutePath.startsWith(projectBasePath)) {
-            XmlTag xmlTag = selectMethodRelationXml(pm);
-            //不为空，说明是mybatis的mapper
-            if (xmlTag != null) {
-                showCode(xmlTag);
-            } else {
-                //其他第三方代码
-                showCode(pm);
-            }
-        } else {
-            //处理本地项目代码
-            //方法所在的类
-            PsiClass containingClass = pm.getContainingClass();
-            AssertUtil.isNullNoException(containingClass);
+        //需要判断是接口还是实现，接口的话可能有多个实现，实现的话直接展示。
+        //接口还需要判断是否为mybatis的mapper，如果是mapper展示对应的xml代码
+        boolean localPsiClass = PsiUtil.isLocalPsiClass(psiClass);
+        //是本地代码，直接展示
+        if (localPsiClass) {
             //接口
-            if (containingClass.isInterface()) {
+            if (psiClass.isInterface()) {
                 //在整个项目中，查找获取到的方法(所有，包括实现类的方法)
                 Collection<PsiMethod> methods = OverridingMethodsSearch.search(pm, GlobalSearchScope.projectScope(project), true)
                         .findAll();
@@ -153,15 +119,20 @@ public class ShowCodeAction extends AnAction {
                     //只有 1 个实现，直接展示
                     showCode(methods.iterator().next());
                 } else {
-                    //插件内部错误
-                    Messages.showMessageDialog("No corresponding reality found", "Notification", Messages.getInformationIcon());
-                    return;
+                    //接口没有实现类，检查是否为mybatis的mapper
+                    XmlTag xmlTag = handlerService.selectMethodRelationXml(pm);
+                    if (xmlTag != null) {
+                        showCode(xmlTag);
+                    }
                 }
-            }
-            //实现类代码，直接展示
-            else {
+            } else {
+                //实现类代码，直接展示
                 showCode(pm);
             }
+        } else {
+            PsiUtil.getPackageName(pm.getContainingClass());
+            //其他第三方代码
+            showCode(pm);
         }
     }
 
@@ -170,7 +141,7 @@ public class ShowCodeAction extends AnAction {
      * @param psi
      */
     private <T extends PsiElement> void showCode(T psi) {
-        EditorTextField editorTextField = PsiUtil.createEditorTextField(psi);
+        EditorTextField editorTextField = PsiUtil.createEditorTextField(psi, project);
         JBScrollPane scrollPane = new JBScrollPane(editorTextField);
         JBPopup popup = JBPopupFactory.getInstance()
                 .createComponentPopupBuilder(scrollPane, editor.getComponent())
@@ -251,46 +222,4 @@ public class ShowCodeAction extends AnAction {
         popup.showInBestPositionFor(editor);
     }
 
-    /**
-     * 获取方法关联的XML
-     * @param pm
-     * @return
-     */
-    private XmlTag selectMethodRelationXml(PsiMethod pm) {
-        //检查是否为mapper
-        PsiClass containingClass = pm.getContainingClass();
-        //查找项目中所有XML文件
-        Collection<VirtualFile> projectAllXML = FileTypeIndex.getFiles(XmlFileType.INSTANCE,
-                GlobalSearchScope.projectScope(pm.getProject()));
-        if (projectAllXML.size() == 0) {
-            return null;
-        }
-        //本地项目路径 - 忽略路径
-        String ideaPath = containingClass.getProject().getBasePath() + "/.idea";
-        //查找对应的sql
-        for (VirtualFile virtualFile : projectAllXML) {
-            //忽略.idea目录，跳过
-            if (virtualFile.getPath().startsWith(ideaPath)) {
-                continue;
-            }
-            //检查是否是mapper，返回xml根节点
-            XmlTag rootTag = MethodXmlBO.checkIsMapper(virtualFile, containingClass);
-            if (rootTag == null) {
-                continue;
-            }
-            //此处说明，这个接口是一个mapper，继续查找对应的sql
-            //获取 mapper.xml 子节点
-            XmlTag[] subTags = rootTag.getSubTags();
-            //方法与xml中的子节点匹配
-            for (XmlTag subTag : subTags) {
-                String id = subTag.getAttributeValue("id");
-                //如果方法名与mapper.xml中的id一致，可以添加图标
-                if (pm.getName().equals(id)) {
-                    //匹配成功
-                    return subTag;
-                }
-            }
-        }
-        return null;
-    }
 }

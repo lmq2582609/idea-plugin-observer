@@ -6,10 +6,12 @@ import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.EditorFontType;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiJavaFile;
+import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.ui.EditorTextField;
 
 import java.io.IOException;
@@ -25,15 +27,15 @@ public class PsiUtil {
      * @param psi
      * @return
      */
-    public static <T extends PsiElement> EditorTextField createEditorTextField(T psi) {
+    public static <T extends PsiElement> EditorTextField createEditorTextField(T psi, Project project) {
         //格式化代码
-        String code = PsiUtil.formatCode(psi.getText());
+        String code = PsiUtil.formatCode(psi);
         //只读
         Document document = EditorFactory.getInstance().createDocument(code);
         document.setReadOnly(true);
         PsiFile psiFile = psi.getContainingFile();
         Language language = psiFile.getLanguage();
-        EditorTextField editorTextField = new EditorTextField(document, psi.getProject(), language.getAssociatedFileType());
+        EditorTextField editorTextField = new EditorTextField(document, project, language.getAssociatedFileType());
         //获取默认样式
         EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
         editorTextField.setFont(scheme.getFont(EditorFontType.PLAIN));
@@ -44,26 +46,18 @@ public class PsiUtil {
     /**
      * 格式化代码
      * 从编辑器中获取的代码，不对齐，需要处理
-     * @param code
+     * @param psi
      * @return
      */
-    public static String formatCode(String code) {
-        //处理文本-格式化代码
-        String[] split = code.split("\\n");
-        StringJoiner sj = new StringJoiner("\n");
-        for (String s : split) {
-            //如果第1个字符是空格，则删除4个空格
-            if (Character.isWhitespace(s.charAt(0))) {
-                sj.add(s.substring(4));
-            } else {
-                sj.add(s);
-            }
-        }
-        return sj.toString();
+    public static <T extends PsiElement> String formatCode(T psi) {
+        CodeStyleManager codeStyleManager = CodeStyleManager.getInstance(psi.getProject());
+        codeStyleManager.reformat(psi);
+        return psi.getText();
     }
 
     /**
      * 判断是否是本地文件
+     * 本地文件Protocol为file，第三方文件Protocol为jar
      * @param psiClass
      * @return
      */
@@ -77,14 +71,20 @@ public class PsiUtil {
     }
 
 
+    /**
+     * 根据class获取包路径
+     * @param psiClass
+     * @return
+     */
     public static String getPackageName(PsiClass psiClass) {
         String packageName = "";
         PsiFile containingFile = psiClass.getContainingFile();
         if (containingFile instanceof PsiJavaFile) {
+            //本地java文件
             packageName = ((PsiJavaFile) containingFile).getPackageName();
         } else if (containingFile.getVirtualFile() != null && containingFile.getVirtualFile().isInLocalFileSystem()) {
-            String classFilePath = containingFile.getVirtualFile().getPath();
             try {
+                String classFilePath = containingFile.getVirtualFile().getPath();
                 JarFile jarFile = new JarFile(classFilePath.substring(0, classFilePath.indexOf("!")));
                 Enumeration<JarEntry> entries = jarFile.entries();
                 while (entries.hasMoreElements()) {
