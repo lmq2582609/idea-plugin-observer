@@ -16,6 +16,7 @@ import com.intellij.psi.xml.XmlTag;
 import java.util.*;
 import java.util.stream.Collectors;
 
+
 /**
  * mybatis mapper图标处理
  */
