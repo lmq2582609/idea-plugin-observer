@@ -10,10 +10,8 @@ import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
-import com.intellij.psi.impl.source.PsiJavaFileImpl;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -63,8 +61,7 @@ public class MybatisMapperIconGutterServiceImpl implements MybatisIconGutterServ
                     String id = subTag.getAttributeValue("id");
                     //如果方法名与mapper.xml中的id一致，可以添加图标
                     if (((PsiMethod) child).getName().equals(id)) {
-                        MethodXmlBO methodXmlBO =
-                                MethodXmlBO.buildMethodXmlEntity(child, subTag);
+                        MethodXmlBO methodXmlBO = MethodXmlBO.buildMethodXmlEntity(child, subTag);
                         methodXmlBOList.add(methodXmlBO);
                     }
                 }
@@ -93,7 +90,5 @@ public class MybatisMapperIconGutterServiceImpl implements MybatisIconGutterServ
         }
         return Collections.emptyList();
     }
-
-
 
 }

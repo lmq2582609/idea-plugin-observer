@@ -1,12 +1,16 @@
 package com.china.observer.util;
 
 import com.intellij.lang.Language;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.command.CommandProcessor;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.EditorFontType;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -50,9 +54,13 @@ public class PsiUtil {
      * @return
      */
     public static <T extends PsiElement> String formatCode(T psi) {
-        CodeStyleManager codeStyleManager = CodeStyleManager.getInstance(psi.getProject());
-        codeStyleManager.reformat(psi);
-        return psi.getText();
+        String formattedCode = WriteCommandAction.runWriteCommandAction(psi.getProject(), (Computable<String>) () -> {
+            // 在这里执行您的代码，例如修改代码风格
+            CodeStyleManager codeStyleManager = CodeStyleManager.getInstance(psi.getProject());
+            codeStyleManager.reformat(psi);
+            return psi.getText();
+        });
+        return formattedCode;
     }
 
     /**
