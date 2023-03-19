@@ -1,7 +1,6 @@
 package com.china.observer.service;
 
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo;
-import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder;
 import com.intellij.psi.PsiElement;
 import java.util.List;
 

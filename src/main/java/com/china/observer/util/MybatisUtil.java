@@ -1,21 +1,17 @@
 package com.china.observer.util;
 
+import com.china.observer.entity.MybatisMethodXmlBO;
+import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
-import com.intellij.psi.PsiMethod;
+import com.intellij.psi.*;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MybatisUtil {
@@ -26,6 +22,10 @@ public class MybatisUtil {
      * @return
      */
     public static XmlTag findXmlByPsiClass(PsiClass psiClass) {
+        //如果不是一个接口，跳过
+        if (psiClass == null || !psiClass.isInterface()) {
+            return null;
+        }
         //查找所有XML
         Collection<VirtualFile> virtualFiles = findProjectFileByType(psiClass.getProject(), XmlFileType.INSTANCE);
         if (virtualFiles.size() == 0) {
@@ -49,12 +49,16 @@ public class MybatisUtil {
      * @return
      */
     public static XmlTag findXmlByPsiMethod(PsiMethod psiMethod) {
+        PsiClass psiClass = psiMethod.getContainingClass();
+        //如果不是一个接口，跳过
+        if (psiClass == null || !psiClass.isInterface()) {
+            return null;
+        }
         //查找所有XML
         Collection<VirtualFile> virtualFiles = findProjectFileByType(psiMethod.getProject(), XmlFileType.INSTANCE);
         if (virtualFiles.size() == 0) {
             return null;
         }
-        PsiClass psiClass = psiMethod.getContainingClass();
         //遍历XML文件
         for (VirtualFile virtualFile : virtualFiles) {
             //校验改文件是否是mapper.xml
@@ -73,6 +77,109 @@ public class MybatisUtil {
             }
         }
         return null;
+    }
+
+    /**
+     * 根据xml查找class接口
+     * @param xmlTag
+     * @return
+     */
+    public static PsiClass findPsiClassByXmlTag(XmlTag xmlTag) {
+        if (!"mapper".equals(xmlTag.getName())){
+            return null;
+        }
+        //xml的namespace
+        String namespace = xmlTag.getAttributeValue("namespace");
+        if (namespace == null || "".equals(namespace)){
+            return null;
+        }
+        //查找项目中所有Java文件
+        Collection<VirtualFile> projectAllClass = findProjectFileByType(xmlTag.getProject(), JavaFileType.INSTANCE);
+        //未查找到Java文件，跳过
+        if (projectAllClass.size() == 0) {
+            return null;
+        }
+        //根据namespace获取class
+        PsiClass psiClass = JavaPsiFacade.getInstance(xmlTag.getProject())
+                .findClass(namespace, GlobalSearchScope.allScope(xmlTag.getProject()));
+        if (psiClass == null || !psiClass.isInterface()) {
+            return null;
+        }
+        return psiClass;
+    }
+
+    /**
+     * 处理xml中的节点
+     * @param subTag
+     * @return
+     */
+    public static XmlTag executeXmlTag(XmlTag subTag, Project project) {
+        //获取mapper.xml中的顶级节点
+        XmlTag parentTag = subTag.getParentTag();
+        if (parentTag == null) {
+            return null;
+        }
+        //新的xmlTag
+        XmlTag tagFromText = createXmlTag(subTag.getText(), project);
+        //新的xmlTag内部的子节点
+        XmlTag[] selectSubTags = tagFromText.getSubTags();
+        //mapper.xml中所有子节点
+        XmlTag[] allTags = parentTag.getSubTags();
+        //查找select的子节点
+        for (XmlTag selectSubTag : selectSubTags) {
+            if ("include".equals(selectSubTag.getName())) {
+                String refId = selectSubTag.getAttributeValue("refid");
+                if (refId != null) {
+                    for (XmlTag subTag2 : allTags) {
+                        String id2 = subTag2.getAttributeValue("id");
+                        if (refId.equals(id2)) {
+                            //替换include节点
+                            selectSubTag.replace(createXmlTag(subTag2.getText(), project));
+                        }
+                    }
+                }
+            }
+        }
+        return tagFromText;
+    }
+
+    /**
+     * 创建新的XmlTag
+     * @param code
+     * @param project
+     * @return
+     */
+    public static XmlTag createXmlTag(String code, Project project) {
+        XmlElementFactory elementFactory = XmlElementFactory.getInstance(project);
+        return elementFactory.createTagFromText(code);
+    }
+
+    /**
+     * 查找并构建mapper与xml的对应关系
+     * @param subTags
+     * @param psiElements
+     * @return
+     */
+    public static List<MybatisMethodXmlBO> buildMapperMethodCorrXml(XmlTag[] subTags, PsiElement[] psiElements) {
+        if (subTags == null || psiElements == null || subTags.length == 0 || psiElements.length == 0) {
+            return Collections.emptyList();
+        }
+        List<MybatisMethodXmlBO> mybatisMethodXmlBOList = new ArrayList<>();
+        for (PsiElement element : psiElements) {
+            if (!(element instanceof PsiMethod)) {
+                continue;
+            }
+            //该方法与xml中的子节点匹配
+            PsiMethod psiMethod = (PsiMethod) element;
+            for (XmlTag subTag : subTags) {
+                String id = subTag.getAttributeValue("id");
+                if (psiMethod.getName().equals(id)) {
+                    MybatisMethodXmlBO mybatisMethodXmlBO = MybatisMethodXmlBO.buildMethodXmlEntity(element, subTag);
+                    mybatisMethodXmlBOList.add(mybatisMethodXmlBO);
+                }
+            }
+        }
+        return mybatisMethodXmlBOList;
     }
 
     /**
@@ -95,10 +202,6 @@ public class MybatisUtil {
      * @return
      */
     public static XmlTag checkIsMapperXml(VirtualFile virtualFile, PsiClass containingClass) {
-        //如果不是一个接口，跳过
-        if (containingClass == null || !containingClass.isInterface()) {
-            return null;
-        }
         PsiManager psiManager = PsiManager.getInstance(containingClass.getProject());
         PsiFile file = psiManager.findFile(virtualFile);
         if (!(file instanceof XmlFile)) {
@@ -110,7 +213,7 @@ public class MybatisUtil {
             return null;
         }
         //包路径
-        String packageName = PsiUtil.getPackageName(containingClass) + "." + containingClass.getName();
+        String packageName = PsiElementUtil.getPackageName(containingClass) + "." + containingClass.getName();
         //检查这个class与xml中的namespace是否一致
         String namespace = rootTag.getAttributeValue("namespace");
         //校验是否一致

@@ -1,12 +1,12 @@
 package com.china.observer.service.impl;
 
-import com.china.observer.service.MapperCorrXmlService;
+import com.china.observer.service.MybaitsMapperCorrXmlService;
 import com.china.observer.util.MybatisUtil;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
 
-public class MapperCorrXmlServiceImpl implements MapperCorrXmlService {
+public class MybaitsMapperCorrXmlServiceImpl implements MybaitsMapperCorrXmlService {
 
     /**
      * 根据element查找对应的关联关系，element参数可能是PsiMethod或PsiClass

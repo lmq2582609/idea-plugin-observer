@@ -19,10 +19,10 @@
     <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <codeInsight.lineMarkerProvider language="JAVA" implementationClass="com.china.observer.ui.GutterMapperIcon"/>
-        <codeInsight.lineMarkerProvider language="XML" implementationClass="com.china.observer.ui.GutterMapperXmlIcon"/>
+        <codeInsight.lineMarkerProvider language="JAVA" implementationClass="com.china.observer.extensions.MybatisMapperGutterIcon"/>
+        <codeInsight.lineMarkerProvider language="XML" implementationClass="com.china.observer.extensions.MybatisXmlGutterIcon"/>
 
-        <definitionsScopedSearch implementation="com.china.observer.extensions.MapperCorrXmlQueryExecutor"/>
+        <definitionsScopedSearch implementation="com.china.observer.extensions.MybatisMapperCorrXmlQueryExecutor"/>
     </extensions>
     <actions>
         <action id="ShowCodeAction" class="com.china.observer.action.ShowCodeAction"

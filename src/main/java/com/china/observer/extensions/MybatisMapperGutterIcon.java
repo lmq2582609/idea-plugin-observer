@@ -1,4 +1,4 @@
-package com.china.observer.ui;
+package com.china.observer.extensions;
 
 import com.china.observer.service.MybatisIconGutterService;
 import com.china.observer.service.impl.MybatisMapperIconGutterServiceImpl;
@@ -11,7 +11,7 @@ import java.util.*;
 /**
  * 给mapper接口和方法加上跳转图标
  */
-public class GutterMapperIcon extends RelatedItemLineMarkerProvider {
+public class MybatisMapperGutterIcon extends RelatedItemLineMarkerProvider {
 
     @Override
     protected void collectNavigationMarkers(@NotNull PsiElement element,

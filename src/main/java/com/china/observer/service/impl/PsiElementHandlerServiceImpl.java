@@ -1,8 +1,7 @@
 package com.china.observer.service.impl;
 
-import com.china.observer.entity.MethodXmlBO;
 import com.china.observer.service.PsiElementHandlerService;
-import com.china.observer.util.PsiUtil;
+import com.china.observer.util.PsiElementUtil;
 import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -11,8 +10,6 @@ import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.psi.xml.XmlTagValue;
-
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
@@ -30,36 +27,51 @@ public class PsiElementHandlerServiceImpl implements PsiElementHandlerService {
         if (containingClass == null) {
             return null;
         }
-        String methodName = method.getName();
-
-        if (methodName.startsWith("get")) {
-            String fieldName = methodName.substring(3);
+        //get开头的方法
+        if (method.getName().startsWith("get")) {
+            //截断get，取后面的字符串为字段名称
+            String fieldName = method.getName().substring(3);
+            //方法返回值类型
             PsiType returnType = method.getReturnType();
-            if (Objects.isNull(returnType)) {
+            if (returnType == null) {
                 return null;
             }
+            //字段名首字母转小写
+            fieldName = fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
+            //查找类中的字段
+            PsiField psiField = PsiElementUtil.selectClassField(containingClass, fieldName);
             //get方法返回结果的类型与字段类型一致
-            PsiField psiField = selectClassField(containingClass, fieldName);
             return Optional.ofNullable(psiField)
                     .filter(field -> field.getType().getCanonicalText().equals(returnType.getCanonicalText()))
                     .orElse(null);
         }
-        if (methodName.startsWith("set")) {
-            //检查参数
+        //set开头的方法
+        if (method.getName().startsWith("set")) {
+            //检查参数，set方法只有1个参数
             PsiParameter[] parameters = method.getParameterList().getParameters();
             if (parameters.length != 1) {
                 return null;
             }
-            String fieldName = methodName.substring(3);
+            //截断set，取后面的字符串为字段名称
+            String fieldName = method.getName().substring(3);
             PsiParameter parameter = parameters[0];
+            //查找类中的字段
+            PsiField psiField = PsiElementUtil.selectClassField(containingClass, fieldName);
             //set方法的参数类型与字段类型一致
-            PsiField psiField = selectClassField(containingClass, fieldName);
             return Optional.ofNullable(psiField)
                     .filter(field -> field.getType().getCanonicalText().equals(parameter.getType().getCanonicalText()))
                     .orElse(null);
         }
         return null;
     }
+
+
+
+
+
+
+
+
 
     /**
      * 检查方法与xml关联
@@ -134,7 +146,7 @@ public class PsiElementHandlerServiceImpl implements PsiElementHandlerService {
             return null;
         }
         //包路径
-        String packageName = PsiUtil.getPackageName(containingClass) + "." + containingClass.getName();
+        String packageName = PsiElementUtil.getPackageName(containingClass) + "." + containingClass.getName();
         //检查这个class与xml中的namespace是否一致
         String namespace = rootTag.getAttributeValue("namespace");
         //校验一致，返回xml根节点
@@ -144,30 +156,7 @@ public class PsiElementHandlerServiceImpl implements PsiElementHandlerService {
         return null;
     }
 
-    /**
-     * 查找类中的字段
-     * @param psiClass
-     * @param fieldName
-     * @return
-     */
-    private PsiField selectClassField(PsiClass psiClass, String fieldName) {
-        //首字母转小写
-        String field = fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
-        //先使用findFiledByName查找一遍
-        PsiField psiField = psiClass.findFieldByName(field, true);
-        if (psiField != null) {
-            return psiField;
-        }
-        //未查找到，再遍历查找一遍，但此处不能查找父类字段
-        PsiField[] fields = psiClass.getFields();
-        fieldName = fieldName.toLowerCase();
-        for (PsiField f : fields) {
-            if (f.getName().toLowerCase().equals(fieldName)) {
-                return f;
-            }
-        }
-        return null;
-    }
+
 
     private XmlTag executeXmlTag(PsiMethod pm, XmlTag[] allTags, XmlTag selectTag) {
         //解析子节点里面的include节点
