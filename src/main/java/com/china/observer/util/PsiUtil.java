@@ -48,19 +48,17 @@ public class PsiUtil {
     }
 
     /**
-     * 格式化代码
+     * 格式化Psi中的代码
      * 从编辑器中获取的代码，不对齐，需要处理
      * @param psi
      * @return
      */
     public static <T extends PsiElement> String formatCode(T psi) {
-        String formattedCode = WriteCommandAction.runWriteCommandAction(psi.getProject(), (Computable<String>) () -> {
-            // 在这里执行您的代码，例如修改代码风格
+        return WriteCommandAction.runWriteCommandAction(psi.getProject(), (Computable<String>) () -> {
             CodeStyleManager codeStyleManager = CodeStyleManager.getInstance(psi.getProject());
             codeStyleManager.reformat(psi);
             return psi.getText();
         });
-        return formattedCode;
     }
 
     /**

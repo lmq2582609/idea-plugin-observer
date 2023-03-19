@@ -21,6 +21,8 @@
     <extensions defaultExtensionNs="com.intellij">
         <codeInsight.lineMarkerProvider language="JAVA" implementationClass="com.china.observer.ui.GutterMapperIcon"/>
         <codeInsight.lineMarkerProvider language="XML" implementationClass="com.china.observer.ui.GutterMapperXmlIcon"/>
+
+        <definitionsScopedSearch implementation="com.china.observer.extensions.MapperCorrXmlQueryExecutor"/>
     </extensions>
     <actions>
         <action id="ShowCodeAction" class="com.china.observer.action.ShowCodeAction"
