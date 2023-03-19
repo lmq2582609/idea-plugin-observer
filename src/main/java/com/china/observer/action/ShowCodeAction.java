@@ -8,23 +8,17 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.colors.EditorFontType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
-import com.intellij.openapi.ui.popup.JBPopupListener;
-import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.openapi.util.Iconable;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.source.PsiJavaFileImpl;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.OverridingMethodsSearch;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.ui.EditorTextField;
 import com.intellij.ui.components.JBList;
-import com.intellij.ui.components.JBScrollPane;
-import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -187,86 +181,5 @@ public class ShowCodeAction extends AnAction {
                 .createPopup();
         popup.showInBestPositionFor(editor);
     }
-
-
-
-
-
-
-
-
-
-
-
-    /**
-     * 执行method判定
-     * @param pe
-     */
-    private void executePsiMethod(PsiElement pe, PsiElementHandlerService handlerService) {
-        //直接放到了函数名字上
-        PsiMethod pm = (PsiMethod) pe;
-        PsiClass psiClass = pm.getContainingClass();
-        if (Objects.isNull(psiClass)) {
-            return;
-        }
-        //需要判断是接口还是实现，接口的话可能有多个实现，实现的话直接展示。
-        //接口还需要判断是否为mybatis的mapper，如果是mapper展示对应的xml代码
-        boolean localPsiClass = PsiElementUtil.isLocalPsiClass(psiClass);
-        //是本地代码，直接展示
-        if (localPsiClass) {
-            //接口
-            if (psiClass.isInterface()) {
-                //在整个项目中，查找获取到的方法(所有，包括实现类的方法)
-                Collection<PsiMethod> methods = OverridingMethodsSearch.search(pm, GlobalSearchScope.projectScope(project), true)
-                        .findAll();
-                //如果方法有多个实现，展示列表，则进行选择
-                if (methods.size() > 1) {
-                    showImplList(methods);
-                } else if (methods.size() == 1) {
-                    //只有 1 个实现，直接展示
-                    showCode(methods.iterator().next());
-                } else {
-                    //接口没有实现类，检查是否为mybatis的mapper
-                    XmlTag xmlTag = handlerService.selectMethodRelationXml(pm);
-                    if (xmlTag != null) {
-                        showCode(xmlTag);
-                    }
-                }
-            } else {
-                //实现类代码，直接展示
-                showCode(pm);
-            }
-        } else {
-            //其他第三方代码
-            showCode(pm);
-        }
-    }
-
-    /**
-     * 展示代码
-     * @param psi
-     */
-    private <T extends PsiElement> void showCode(T psi) {
-        EditorTextField editorTextField = PsiElementUtil.createEditorTextField(psi, project);
-        JBScrollPane scrollPane = new JBScrollPane(editorTextField);
-        JBPopup popup = JBPopupFactory.getInstance()
-                .createComponentPopupBuilder(scrollPane, editor.getComponent())
-                .setRequestFocus(true)
-                .setResizable(true)
-                .setMovable(true)
-                .setTitle("Show Code")
-                .createPopup();
-        popup.addListener(new JBPopupListener() {
-            @Override
-            public void onClosed(@NotNull LightweightWindowEvent event) {
-                if (editorTextField.getEditor() != null) {
-                    EditorFactory.getInstance().releaseEditor(editorTextField.getEditor());
-                }
-            }
-        });
-        popup.showInFocusCenter();
-    }
-
-
 
 }
