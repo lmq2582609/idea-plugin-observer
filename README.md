@@ -1,3 +1,6 @@
+<p align="center">
+	<img alt="logo" width="64px" height="64px" src="images/pluginIcon.svg">
+</p>
 <h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">Idea-Plugin-Observer</h1>
 
 ## 中文简介
