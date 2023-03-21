@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.china"
-version = "1.2-SNAPSHOT"
+version = "1.3"
 
 repositories {
     mavenCentral()
@@ -12,9 +12,9 @@ repositories {
 
 // Configure Gradle IntelliJ Plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
 intellij {
-    version.set("2021.2")
-    type.set("IC") // Target IDE Platform
-
+    version.set("2020.2")
+    //type.set("IC") // Target IDE Platform
+    type.set("IU") // Target IDE Platform
     plugins.set(listOf("java"))
 }
 
@@ -25,9 +25,11 @@ tasks {
         targetCompatibility = "11"
     }
 
+//    sinceBuild表示支持最低版本
+//    untilBuild为空表示支持未来所有版本
     patchPluginXml {
-        sinceBuild.set("212")
-        untilBuild.set("222.*")
+        sinceBuild.set("202")
+        untilBuild.set("")
     }
 
     signPlugin {
