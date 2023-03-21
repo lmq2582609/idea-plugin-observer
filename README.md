@@ -36,6 +36,14 @@ To add a "Show Code" option to the right-click menu, which pops up a window to v
 </table>
 
 ## 版本说明 / Version Description
+<h4>1.3 English</h4>
+<ul>
+    <li>Compatible with more versions.</li>
+</ul>
+<h4>1.3 Chinese</h4>
+<ul>
+    <li>兼容更多的版本。</li>
+</ul>
 <h4>1.2 English</h4>
 <ul>
     <li>Mybatis mapper supports "ctrl+alt+ left mouse button "and "ctrl+B" shortcut key code jump.</li>
