@@ -17,6 +17,7 @@ import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.openapi.util.Computable;
 import com.intellij.psi.*;
 import com.intellij.psi.codeStyle.CodeStyleManager;
+import com.intellij.psi.xml.XmlTag;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.components.JBScrollPane;
 import org.jetbrains.annotations.NotNull;
@@ -75,8 +76,16 @@ public class PsiElementUtil {
      * @return
      */
     public static EditorTextField createEditorTextField(PsiElement psi, Project project) {
+        // 创建新的psiElement，否则会改动源代码
+        //PsiElement psiElement = copyPsiElement(psi, project);
         //格式化代码
-        String code = formatCode(psi);
+        //String code = formatCode(psi);
+
+        //格式化代码
+        String code = psi.getText();
+        if (psi instanceof XmlTag) {
+            code = formatCode(psi);
+        }
         //只读
         Document document = EditorFactory.getInstance().createDocument(code);
         document.setReadOnly(true);
@@ -88,6 +97,25 @@ public class PsiElementUtil {
         editorTextField.setFont(scheme.getFont(EditorFontType.PLAIN));
         editorTextField.setOneLineMode(false);
         return editorTextField;
+    }
+
+    /**
+     * 创建新的psiElement
+     * @param psi
+     * @param project
+     * @return
+     */
+    public static PsiElement copyPsiElement(PsiElement psi, Project project) {
+        PsiElementFactory elementFactory = PsiElementFactory.getInstance(project);
+        if (psi instanceof PsiMethod) {
+            return elementFactory.createMethodFromText(psi.getText(), null);
+        } else if (psi instanceof PsiClass) {
+            return elementFactory.createClassFromText(psi.getText(), null);
+        } else if (psi instanceof PsiField) {
+            return elementFactory.createFieldFromText(psi.getText(), null);
+        }
+        // 默认返回method
+        return elementFactory.createMethodFromText(psi.getText(), null);
     }
 
     /**

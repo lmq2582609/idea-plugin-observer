@@ -114,6 +114,10 @@ public class ShowCodeAction extends AnAction {
                     //解析<include />节点
                     XmlTag newXmlTag = MybatisUtil.executeXmlTag(xmlTag, this.project);
                     PsiElementUtil.showCode(newXmlTag, this.editor);
+                    //删除
+                    if (newXmlTag != null) {
+                        newXmlTag.delete();
+                    }
                 }
             }
         } else {
