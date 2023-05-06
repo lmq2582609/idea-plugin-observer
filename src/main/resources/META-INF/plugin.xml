@@ -2,7 +2,7 @@
 
     <id>com.china.observer</id>
     <name>Observer</name>
-    <vendor email="438562332@qq.com" url="https://lmq2582609.github.io/sun-blog/">sun</vendor>
+    <vendor email="438562332@qq.com" url="https://apebbs.cn">sun</vendor>
 
     <description>
         <![CDATA[
@@ -27,6 +27,11 @@
     </description>
 
     <change-notes><![CDATA[
+      <h4>1.4</h4>
+      <ul>
+          <li>Fixed source code modification when right-clicking ->show code.</li>
+          <li>修复右键->show code时会修改源代码问题。</li>
+      </ul>
       <h4>1.3</h4>
       <ul>
           <li>Compatible with more versions.</li>
@@ -37,7 +42,7 @@
           <li>Mybatis mapper supports "ctrl+alt+ left mouse button "and "ctrl+B" shortcut key code jump.</li>
           <li>Mybatis的mapper支持"ctrl+alt+鼠标左键"和"ctrl+B"快捷键代码跳转。</li>
       </ul>
-       <h4>1.0-SNAPSHOT</h4>
+      <h4>1.0-SNAPSHOT</h4>
       <ul>
           <li>When the cursor is on a function, using "Show Code" displays the specific code of that function in the pop-up window.</li>
           <li>When the cursor is on a get or set function of an entity class, using "Show Code" displays the code of the corresponding field in the pop-up window.</li>

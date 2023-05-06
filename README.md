@@ -36,6 +36,14 @@ To add a "Show Code" option to the right-click menu, which pops up a window to v
 </table>
 
 ## 版本说明 / Version Description
+<h4>1.4 English</h4>
+<ul>
+    <li>Fixed source code modification when right-clicking ->show code.</li>
+</ul>
+<h4>1.4 Chinese</h4>
+<ul>
+    <li>修复右键->show code时会修改源代码问题。</li>
+</ul>
 <h4>1.3 English</h4>
 <ul>
     <li>Compatible with more versions.</li>
